@@ -15,7 +15,33 @@ generating non-conformity measures based on different intuitions.
 
 """
 import numpy as np
+import torch
 from tqdm import tqdm
+
+
+def get_single_mlp_ncm(model, single_x_tensor, single_y):
+    model.eval()  # Ensure the model is in evaluation mode
+    with torch.no_grad():  # No need to track gradients
+        # Check if single_x_tensor needs to be unsqueezed
+        if len(single_x_tensor.shape) == 1:  # If single_x_tensor is 1D
+            single_x_tensor = single_x_tensor.unsqueeze(0)  # Add batch dimension
+
+        logits = model(single_x_tensor)
+        probabilities = torch.softmax(logits, dim=1)
+
+        # Use positive value for class 1 and negative for class 0
+        if single_y == 1:
+            ncm = -probabilities[0, 1].item()  # Probability of being class 1
+        else:
+            ncm = -probabilities[0, 0].item()  # Negative probability of being class 0
+
+    return ncm
+
+
+def get_mlp_ncms(model, X_in, y_in):
+    # Ensure X_in and y_in are numpy arrays or similar
+    return [get_single_mlp_ncm(model, x, y) for x, y in
+            tqdm(zip(X_in, y_in), total=len(y_in), desc='mlp ncms')]
 
 
 def get_svm_ncms(clf, X_in, y_in):
